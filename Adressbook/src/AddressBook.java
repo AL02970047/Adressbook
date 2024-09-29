@@ -23,8 +23,10 @@ public class AddressBook {
             System.out.println("Error al cargar contactos: " + e.getMessage());
         }
     }
-
     public void save(String fileName) {
+        // Crear un backup del archivo antes de guardar
+        createBackup(fileName);
+
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(fileName))) {
             for (Map.Entry<String, String> entry : contacts.entrySet()) {
                 bw.write(entry.getKey() + "," + entry.getValue());
@@ -34,7 +36,6 @@ public class AddressBook {
             System.out.println("Error al guardar contactos: " + e.getMessage());
         }
     }
-
     public void list() {
         if (contacts.isEmpty()) {
             System.out.println("No hay contactos en la agenda.");
@@ -45,13 +46,16 @@ public class AddressBook {
             }
         }
     }
-
     public void create(String phoneNumber, String name) {
-        if (contacts.containsKey(phoneNumber)) {
-            System.out.println("Este número ya está en la agenda.");
+        if (isValidPhoneNumber(phoneNumber)) {
+            if (contacts.containsKey(phoneNumber)) {
+                System.out.println("Este número ya está en la agenda.");
+            } else {
+                contacts.put(phoneNumber, name);
+                System.out.println("Contacto agregado.");
+            }
         } else {
-            contacts.put(phoneNumber, name);
-            System.out.println("Contacto agregado.");
+            System.out.println("Número de teléfono inválido. Debe contener 10 dígitos.");
         }
     }
 
@@ -64,6 +68,36 @@ public class AddressBook {
         }
     }
 
+    public void edit(String phoneNumber, String newName) {
+        if (contacts.containsKey(phoneNumber)) {
+            contacts.put(phoneNumber, newName);
+            System.out.println("Contacto actualizado.");
+        } else {
+            System.out.println("No se encontró el número en la agenda.");
+        }
+    }
+
+    public boolean isValidPhoneNumber(String phoneNumber) {
+        return phoneNumber.matches("\\d{10}");
+    }
+
+    public void createBackup(String fileName) {
+        File originalFile = new File(fileName);
+        if (originalFile.exists()) {
+            File backupFile = new File(fileName + ".bak");
+            try (InputStream is = new FileInputStream(originalFile);
+                 OutputStream os = new FileOutputStream(backupFile)) {
+                byte[] buffer = new byte[1024];
+                int length;
+                while ((length = is.read(buffer)) > 0) {
+                    os.write(buffer, 0, length);
+                }
+                System.out.println("Backup creado: " + backupFile.getName());
+            } catch (IOException e) {
+                System.out.println("Error al crear el backup: " + e.getMessage());
+            }
+        }
+    }
     public void menu(String fileName) {
         Scanner scanner = new Scanner(System.in);
         String option;
@@ -73,7 +107,8 @@ public class AddressBook {
             System.out.println("1. Listar contactos");
             System.out.println("2. Crear contacto");
             System.out.println("3. Eliminar contacto");
-            System.out.println("4. Guardar y salir");
+            System.out.println("4. Editar contacto");
+            System.out.println("5. Guardar y salir");
             option = scanner.nextLine();
 
             switch (option) {
@@ -93,23 +128,27 @@ public class AddressBook {
                     delete(deletePhone);
                     break;
                 case "4":
+                    System.out.print("Ingrese el número de teléfono a editar: ");
+                    String editPhone = scanner.nextLine();
+                    System.out.print("Ingrese el nuevo nombre del contacto: ");
+                    String newName = scanner.nextLine();
+                    edit(editPhone, newName);
+                    break;
+                case "5":
                     save(fileName);
                     System.out.println("Agenda guardada. ¡Adiós!");
                     break;
                 default:
                     System.out.println("Opción no válida.");
             }
-        } while (!option.equals("4"));
+        } while (!option.equals("5"));
     }
 
     public static void main(String[] args) {
         AddressBook addressBook = new AddressBook();
         String fileName = "contacts.csv";
 
-        // Cargar contactos desde archivo si existe
         addressBook.load(fileName);
-
-        // Iniciar el menú interactivo
         addressBook.menu(fileName);
     }
 }
